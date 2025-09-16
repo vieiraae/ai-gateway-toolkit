@@ -1,0 +1,289 @@
+{
+  "name": "ai-gateway-toolkit",
+  "displayName": "AI Gateway Toolkit",
+  "description": "Connects to Azure API Management and manage AI inference APIs with a playground and analytics features",
+  "version": "0.1.0",
+  "publisher": "AlexVieira",
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "categories": [
+    "Azure",
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "azure",
+    "api-management",
+    "ai",
+    "ml",
+    "analytics",
+    "playground"
+  ],
+  "icon": "resources/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vieiraae/ai-gateway-toolkit"
+  },
+  "homepage": "https://github.com/vieiraae/ai-gateway-toolkit#readme",
+  "bugs": {
+    "url": "https://github.com/vieiraae/ai-gateway-toolkit/issues"
+  },
+  "license": "MIT",
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aiGatewayToolkit.connect",
+        "title": "Connect to Azure API Management",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "aiGatewayToolkit.disconnect",
+        "title": "Disconnect",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "aiGatewayToolkit.openAnalytics",
+        "title": "Open Analytics Dashboard",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(graph-line)"
+      },
+      {
+        "command": "aiGatewayToolkit.openPlayground",
+        "title": "Open Playground",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(console)"
+      },
+      {
+        "command": "aiGatewayToolkit.refreshApis",
+        "title": "Refresh APIs",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "aiGatewayToolkit.refreshSubscriptions",
+        "title": "Refresh Subscriptions",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "aiGatewayToolkit.refreshModels",
+        "title": "Refresh Models",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "aiGatewayToolkit.copySubscriptionKey",
+        "title": "Copy Primary Key",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "aiGatewayToolkit.copySecondaryKey",
+        "title": "Copy Secondary Key",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "aiGatewayToolkit.createSubscription",
+        "title": "Create Subscription",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(add)"
+      },
+      {
+        "command": "aiGatewayToolkit.openApiDocumentation",
+        "title": "Open API Documentation",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(book)"
+      }
+    ],
+    "views": {
+      "aiGatewayToolkit": [
+        {
+          "id": "aiGatewayToolkit.apiExplorer",
+          "name": "APIs",
+          "when": "aiGatewayToolkit.connected",
+          "icon": "$(symbol-interface)"
+        },
+        {
+          "id": "aiGatewayToolkit.subscriptionsExplorer",
+          "name": "Subscriptions",
+          "when": "aiGatewayToolkit.connected",
+          "icon": "$(key)"
+        },
+        {
+          "id": "aiGatewayToolkit.modelsExplorer",
+          "name": "Models",
+          "when": "aiGatewayToolkit.connected",
+          "icon": "$(globe)"
+        },
+        {
+          "id": "aiGatewayToolkit.connectionView",
+          "name": "Connection",
+          "when": "!aiGatewayToolkit.connected",
+          "icon": "$(plug)"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aiGatewayToolkit",
+          "title": "AI Gateway Toolkit",
+          "icon": "resources/icon.png"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "aiGatewayToolkit.connect",
+          "when": "view == aiGatewayToolkit.connectionView",
+          "group": "navigation"
+        },
+        {
+          "command": "aiGatewayToolkit.disconnect",
+          "when": "view == aiGatewayToolkit.apiExplorer || view == aiGatewayToolkit.subscriptionsExplorer || view == aiGatewayToolkit.modelsExplorer",
+          "group": "navigation@0"
+        },
+        {
+          "command": "aiGatewayToolkit.openAnalytics",
+          "when": "view == aiGatewayToolkit.apiExplorer || view == aiGatewayToolkit.subscriptionsExplorer || view == aiGatewayToolkit.modelsExplorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "aiGatewayToolkit.refreshApis",
+          "when": "view == aiGatewayToolkit.apiExplorer",
+          "group": "navigation@2"
+        },
+        {
+          "command": "aiGatewayToolkit.refreshSubscriptions",
+          "when": "view == aiGatewayToolkit.subscriptionsExplorer",
+          "group": "navigation@2"
+        },
+        {
+          "command": "aiGatewayToolkit.refreshModels",
+          "when": "view == aiGatewayToolkit.modelsExplorer",
+          "group": "navigation@2"
+        },
+        {
+          "command": "aiGatewayToolkit.createSubscription",
+          "when": "view == aiGatewayToolkit.subscriptionsExplorer",
+          "group": "navigation@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "aiGatewayToolkit.openAnalytics",
+          "when": "view == aiGatewayToolkit.apiExplorer && viewItem == api",
+          "group": "inline@1"
+        },
+        {
+          "command": "aiGatewayToolkit.openPlayground",
+          "when": "view == aiGatewayToolkit.apiExplorer && viewItem == api",
+          "group": "inline@2"
+        },
+        {
+          "command": "aiGatewayToolkit.openApiDocumentation",
+          "when": "view == aiGatewayToolkit.apiExplorer && viewItem == api",
+          "group": "context@1"
+        },
+        {
+          "command": "aiGatewayToolkit.openAnalytics",
+          "when": "view == aiGatewayToolkit.subscriptionsExplorer && viewItem == subscription",
+          "group": "inline@1"
+        },
+        {
+          "command": "aiGatewayToolkit.openPlayground",
+          "when": "view == aiGatewayToolkit.subscriptionsExplorer && viewItem == subscription",
+          "group": "inline@2"
+        },
+        {
+          "command": "aiGatewayToolkit.copySubscriptionKey",
+          "when": "view == aiGatewayToolkit.subscriptionsExplorer && viewItem == subscription",
+          "group": "context@1"
+        },
+        {
+          "command": "aiGatewayToolkit.copySecondaryKey",
+          "when": "view == aiGatewayToolkit.subscriptionsExplorer && viewItem == subscription",
+          "group": "context@2"
+        },
+        {
+          "command": "aiGatewayToolkit.connect",
+          "when": "view == aiGatewayToolkit.connectionView && viewItem == connect-button",
+          "group": "inline@1"
+        },
+        {
+          "command": "aiGatewayToolkit.openAnalytics",
+          "when": "view == aiGatewayToolkit.modelsExplorer && viewItem == model",
+          "group": "inline@1"
+        },
+        {
+          "command": "aiGatewayToolkit.openPlayground",
+          "when": "view == aiGatewayToolkit.modelsExplorer && viewItem == model",
+          "group": "inline@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AI Gateway Toolkit",
+      "properties": {
+        "aiGatewayToolkit.logAnalyticsWorkspaceId": {
+          "type": "string",
+          "default": "",
+          "description": "Log Analytics workspace ID for fetching AI usage analytics and logs. If not set, the workspace ID will be automatically detected from the connected Azure API Management service's logger configuration. Manual configuration is only needed if auto-detection fails.",
+          "scope": "window"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test",
+    "build:webview": "webpack --config webpack.webview.config.js"
+  },
+  "dependencies": {
+    "@azure-rest/ai-inference": "^1.0.0-beta.6",
+    "@azure/arm-apimanagement": "^9.1.0",
+    "@azure/arm-subscriptions": "^5.1.0",
+    "@azure/core-auth": "^1.10.1",
+    "@azure/identity": "^4.0.1",
+    "@azure/logger": "^1.1.4",
+    "@azure/monitor-query-logs": "^1.0.0",
+    "axios": "^1.6.2",
+    "openai": "^5.20.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.8.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/vscode": "^1.104.0",
+    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "css-loader": "^6.8.1",
+    "eslint": "^9.34.0",
+    "html-webpack-plugin": "^5.6.4",
+    "style-loader": "^3.3.3",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.9.2",
+    "webpack": "^5.101.3",
+    "webpack-cli": "^6.0.1"
+  }
+}
