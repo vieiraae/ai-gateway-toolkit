@@ -2,7 +2,7 @@
   "name": "ai-gateway-toolkit",
   "displayName": "AI Gateway Toolkit",
   "description": "Connects to Azure API Management and manage AI inference APIs with a playground and analytics features",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "AlexVieira",
   "engines": {
     "vscode": "^1.104.0"
@@ -232,12 +232,6 @@
     "configuration": {
       "title": "AI Gateway Toolkit",
       "properties": {
-        "aiGatewayToolkit.logAnalyticsWorkspaceId": {
-          "type": "string",
-          "default": "",
-          "description": "Log Analytics workspace ID for fetching AI usage analytics and logs. If not set, the workspace ID will be automatically detected from the connected Azure API Management service's logger configuration. Manual configuration is only needed if auto-detection fails.",
-          "scope": "window"
-        }
       }
     }
   },
