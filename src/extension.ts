@@ -5,6 +5,7 @@ import { ApiTreeProvider } from './providers/apiTreeProvider';
 import { SubscriptionTreeProvider } from './providers/subscriptionTreeProvider';
 import { ModelTreeProvider } from './providers/modelTreeProvider';
 import { ConnectionTreeProvider } from './providers/connectionTreeProvider';
+import { HelpTreeProvider } from './providers/helpTreeProvider';
 
 export async function activate(context: vscode.ExtensionContext) {
     console.log('[AI Gateway Toolkit] Extension activated');
@@ -18,6 +19,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const subscriptionTreeProvider = new SubscriptionTreeProvider(azureService);
     const modelTreeProvider = new ModelTreeProvider(azureService);
     const connectionTreeProvider = new ConnectionTreeProvider(azureService);
+    const helpTreeProvider = new HelpTreeProvider();
 
     // Listen for tree data changes and notify analytics dashboard
     apiTreeProvider.onDidChangeTreeData(() => {
@@ -59,6 +61,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const connectionTreeView = vscode.window.createTreeView('aiGatewayToolkit.connectionView', {
         treeDataProvider: connectionTreeProvider
+    });
+
+    const helpTreeView = vscode.window.createTreeView('aiGatewayToolkit.helpAndFeedback', {
+        treeDataProvider: helpTreeProvider,
+        showCollapseAll: false
     });
 
     // Register tree view selection handlers to automatically open playground with selections
@@ -344,12 +351,19 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.env.openExternal(vscode.Uri.parse('https://docs.microsoft.com/en-us/azure/api-management/'));
     });
 
+    const openUrlCommand = vscode.commands.registerCommand('aiGatewayToolkit.openUrl', (url: string) => {
+        if (url) {
+            vscode.env.openExternal(vscode.Uri.parse(url));
+        }
+    });
+
     // Add all commands to subscriptions
     context.subscriptions.push(
         apiTreeView,
         subscriptionTreeView,
         modelTreeView,
         connectionTreeView,
+        helpTreeView,
         connectCommand,
         disconnectCommand,
         openAnalyticsCommand,
@@ -360,7 +374,8 @@ export async function activate(context: vscode.ExtensionContext) {
         copySubscriptionKeyCommand,
         copySecondaryKeyCommand,
         createSubscriptionCommand,
-        openApiDocumentationCommand
+        openApiDocumentationCommand,
+        openUrlCommand
     );
 
     // Handle authentication session changes

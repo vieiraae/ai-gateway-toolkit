@@ -4,9 +4,31 @@ All notable changes to the "ai-gateway-toolkit" extension will be documented in 
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.1.1] - 2025-09-16
+## [0.1.2] - 2025-09-17
 
 ### Added
+
+- **Help & Feedback Tree Provider**: New always-visible tree view section with quick access to:
+  - **Toolkit Overview**: Direct link to VS Code Marketplace extension page
+  - **What's New**: Changelog and recent updates
+  - **Q & A**: Community questions and answers section
+  - **Rate & Review**: Extension rating and review interface
+  - **AI Gateway Docs**: Official Azure AI Gateway documentation
+  - **AI Gateway Labs**: Experimental features and labs
+  - **AI Gateway Workshop**: Hands-on tutorials and workshops
+- **External Link Support**: `openUrl` command for seamless web page navigation
+- **Enhanced User Experience**: Professional icons and tooltips for all help items
+
+### Technical Improvements
+
+- New `HelpTreeProvider` class with structured help items management
+- Integrated external link opening functionality
+- Always-available help resources (works in both connected/disconnected states)
+- Consistent VS Code theme icon usage (`info`, `history`, `question`, `star`, `book`, `beaker`, `mortar-board`)
+
+## [0.1.1] - 2025-09-16
+
+### Enhancements
 
 - Repository information and metadata for marketplace publishing
 - Improved package.json with proper publisher configuration

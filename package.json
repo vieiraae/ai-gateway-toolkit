@@ -2,7 +2,7 @@
   "name": "ai-gateway-toolkit",
   "displayName": "AI Gateway Toolkit",
   "description": "Connects to Azure API Management and manage AI inference APIs with a playground and analytics features",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "AlexVieira",
   "engines": {
     "vscode": "^1.104.0"
@@ -99,6 +99,12 @@
         "title": "Open API Documentation",
         "category": "AI Gateway Toolkit",
         "icon": "$(book)"
+      },
+      {
+        "command": "aiGatewayToolkit.openUrl",
+        "title": "Open URL",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(link-external)"
       }
     ],
     "views": {
@@ -126,6 +132,11 @@
           "name": "Connection",
           "when": "!aiGatewayToolkit.connected",
           "icon": "$(plug)"
+        },
+        {
+          "id": "aiGatewayToolkit.helpAndFeedback",
+          "name": "Help & Feedback",
+          "icon": "$(question)"
         }
       ]
     },
