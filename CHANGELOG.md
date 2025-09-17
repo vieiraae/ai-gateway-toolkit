@@ -4,7 +4,7 @@ All notable changes to the "ai-gateway-toolkit" extension will be documented in 
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.1.3] - 2025-09-17
+## [0.1.4] - 2025-09-17
 
 ### New Documentation
 
