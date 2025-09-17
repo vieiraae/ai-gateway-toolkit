@@ -4,6 +4,28 @@ All notable changes to the "ai-gateway-toolkit" extension will be documented in 
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.1.3] - 2025-09-17
+
+### New Documentation
+
+- **Comprehensive FAQ Documentation**: New `FAQ.md` with frequently asked questions
+- **Support Documentation**: New `SUPPORT.md` with clear guidance
+- **Technical Documentation**: New `docs/README.md` with comprehensive technical details
+
+### Enhanced User Experience
+
+- **Documentation Structure**: Better organized documentation hierarchy for different user types
+- **User Support**: Multiple channels for getting help based on issue type
+- **Developer Experience**: Comprehensive technical documentation for contributors
+- **Community Resources**: Clear pathways for community engagement and contribution
+
+### Documentation Improvements
+
+- Enhanced project documentation organization
+- Improved markdown formatting and consistency
+- Better separation between user-facing and technical documentation
+- Comprehensive troubleshooting and FAQ coverage
+
 ## [0.1.2] - 2025-09-17
 
 ### Added

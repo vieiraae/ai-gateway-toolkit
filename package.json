@@ -2,7 +2,7 @@
   "name": "ai-gateway-toolkit",
   "displayName": "AI Gateway Toolkit",
   "description": "Connects to Azure API Management and manage AI inference APIs with a playground and analytics features",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "publisher": "AlexVieira",
   "engines": {
     "vscode": "^1.104.0"

@@ -1,6 +1,12 @@
 # AI Gateway Toolkit
 
-Connect to Azure API Management and manage AI/ML inference APIs with comprehensive analytics, playground, and configuration features.
+Connect to Azure API Management to test and monitor AI Gateway deployments.
+
+<p align="center">
+    <img src="docs/ai-gateway-toolkit-demo1.gif" alt="AI Gateway Toolkit preview" />
+</p>
+
+ℹ️ The AI Gateway Toolkit is developed and maintained by the author (Alex Vieira) and is not an official Microsoft product — it is not provided, or supported by Microsoft. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
 
 ## Features
 
