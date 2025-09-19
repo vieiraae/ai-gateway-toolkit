@@ -11,7 +11,7 @@ export class ModelTreeItem extends vscode.TreeItem {
         this.tooltip = `${model.modelName}\nTotal Tokens: ${model.totalTokens.toLocaleString()}\nRequests: ${model.requestCount.toLocaleString()}\nAvg Latency: ${model.averageLatency.toFixed(2)}ms\nSuccess Rate: ${model.successRate.toFixed(1)}%`;
         this.description = `${model.totalTokens.toLocaleString()} tokens`;
         this.contextValue = 'model';
-        this.iconPath = new vscode.ThemeIcon('globe');
+        this.iconPath = new vscode.ThemeIcon('package');
     }
 }
 

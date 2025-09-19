@@ -104,7 +104,12 @@ const Playground: React.FC = () => {
                     break;
                 case 'modelsData':
                     console.log('[Playground] Received modelsData:', message.data);
-                    setState(prev => ({ ...prev, models: message.data }));
+                    setState(prev => ({ 
+                        ...prev, 
+                        models: message.data,
+                        // Auto-select first model if none is selected
+                        modelName: prev.modelName || (message.data.length > 0 ? message.data[0].modelName : '')
+                    }));
                     break;
                 case 'setSelection':
                     console.log('[Playground] Received setSelection:', message.data);
@@ -417,17 +422,22 @@ const Playground: React.FC = () => {
                         </div>
                         
                         <div className="config-group">
-                            <label htmlFor="model-input">Model:</label>
-                            <input
-                                id="model-input"
-                                type="text"
+                            <label htmlFor="model-select">Model:</label>
+                            <select
+                                id="model-select"
                                 value={state.modelName}
                                 onChange={(e) => setState(prev => ({ 
                                     ...prev, 
                                     modelName: e.target.value
                                 }))}
-                                placeholder="e.g., gpt-4, gpt-3.5-turbo"
-                            />
+                            >
+                                <option value="">Select Model</option>
+                                {state.models.map(model => (
+                                    <option key={model.modelName} value={model.modelName}>
+                                        {model.displayName} {model.usage ? `(${model.usage.toLocaleString()} tokens)` : ''}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         
                         <div className="config-group">

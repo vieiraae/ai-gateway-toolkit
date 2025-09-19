@@ -454,6 +454,7 @@ export class WebviewService {
                 },
                 apiIds: filters.apiIds,
                 subscriptionNames: filters.subscriptionNames,
+                backends: filters.backends,
                 modelNames: filters.modelNames
             };
 
@@ -693,9 +694,10 @@ export class WebviewService {
             }
 
             // Get filter options from Azure services
-            const [apis, subscriptions, models] = await Promise.all([
+            const [apis, subscriptions, backends, models] = await Promise.all([
                 this.azureService.getApis(),
                 this.azureService.getSubscriptions(),
+                this.azureService.getBackendsFromLogs(),
                 this.azureService.getModelsFromLogs()
             ]);
 
@@ -704,7 +706,7 @@ export class WebviewService {
                 apiIds: apis.map(api => api.id),
                 operationIds: [] as string[], // Would need to be populated from API operations
                 subscriptionNames: subscriptions.map(sub => sub.name),
-                backends: [] as string[], // Would need to be populated from backend services  
+                backends: backends.map(backend => backend.backendName),
                 modelNames: models.map(model => model.modelName),
                 regions: [] as string[] // Would be extracted from logs analysis
             };

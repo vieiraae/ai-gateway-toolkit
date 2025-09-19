@@ -35,13 +35,14 @@ ai-gateway-toolkit/
 │   │   └── vscodeAzureCredential.ts # VS Code Azure auth provider
 │   ├── providers/                 # Tree data providers for VS Code
 │   │   ├── apisTreeProvider.ts    # APIs tree view
+│   │   ├── backendsTreeProvider.ts # Backends tree view
 │   │   ├── connectionsTreeProvider.ts # Connections management
 │   │   ├── helpTreeProvider.ts    # Help & Feedback resources
 │   │   ├── modelsTreeProvider.ts  # Models tree view
 │   │   └── subscriptionsTreeProvider.ts # Subscriptions tree view
 │   ├── services/                  # Core business logic services
-│   │   ├── apiManagementService.ts # APIM API wrapper
-│   │   ├── inferenceService.ts    # AI inference API calls
+│   │   ├── azureService.ts        # Azure SDK integration & authentication
+│   │   ├── webviewService.ts      # Webview panel management
 │   │   └── logAnalyticsQueryService.ts # Log Analytics queries
 │   ├── utils/                     # Utility functions and helpers
 │   │   ├── errorHandler.ts        # Centralized error handling
@@ -103,15 +104,31 @@ ai-gateway-toolkit/
 
 ### 2. Service Layer
 
-#### ApiManagementService (`src/services/apiManagementService.ts`)
+#### AzureService (`src/services/azureService.ts`)
 
-- Wraps Azure API Management REST APIs
-- Provides methods for:
-  - Listing APIs and operations
-  - Managing subscriptions (create, list, get keys)
-  - Detecting Log Analytics workspace configuration
-- Implements TTL caching for performance
-- Error handling and retry logic
+- **Unified Azure SDK Integration**: Centralized service for all Azure operations
+- **Advanced Token Management**: 
+  - Automatic token refresh with intelligent retry logic
+  - Dual-token system for management and logs operations
+  - Token expiry detection and proactive refresh (30-minute refresh window)
+  - Error recovery with automatic re-authentication
+- **API Management Operations**:
+  - Listing APIs, subscriptions, and backends
+  - Subscription creation and key management
+  - APIM gateway URL detection and configuration
+- **Log Analytics Integration**:
+  - Kusto query execution with resource-specific tokens
+  - Multi-dimensional analytics (models, backends, usage trends)
+  - Support for custom time ranges and filtering
+- **Enhanced Error Handling**: Automatic retry on token expiry with exponential backoff
+- **Debug Capabilities**: Token status inspection and authentication troubleshooting
+
+#### WebviewService (`src/services/webviewService.ts`)
+
+- **React Webview Management**: Creates and manages webview panels for analytics and playground
+- **Message Handling**: Bidirectional communication between extension and React components
+- **HTML Generation**: Dynamic HTML generation with CSP-compliant script injection
+- **Resource Management**: Proper cleanup and lifecycle management of webview resources
 
 #### LogAnalyticsQueryService (`src/services/logAnalyticsQueryService.ts`)
 
@@ -123,13 +140,6 @@ ai-gateway-toolkit/
   - Dimension value extraction
   - Correlation log retrieval
 - Integrates with KustoQueryBuilder for complex query construction
-
-#### InferenceService (`src/services/inferenceService.ts`)
-
-- Handles AI inference API calls through APIM
-- Supports various AI models and endpoints
-- Manages subscription key authentication
-- Placeholder for streaming response support
 
 ### 3. Tree Data Providers
 
@@ -146,7 +156,15 @@ All tree providers implement VS Code's `TreeDataProvider<T>` interface:
 - Actions: Create subscription, copy keys, view details
 - Real-time updates when subscriptions change
 
+#### BackendsTreeProvider (`src/providers/backendsTreeProvider.ts`)
+
+- Displays Azure backends from Log Analytics data
+- Shows backend performance metrics and token usage
+- Context menu actions for opening analytics dashboard
+- Real-time updates with refresh capabilities
+
 #### ModelsTreeProvider (`src/providers/modelsTreeProvider.ts`)
+
 - Displays detected AI models from usage data
 - Groups by model family and version
 - Usage statistics integration
@@ -340,6 +358,64 @@ npx vsce publish
 - No data leaves Azure tenant
 - Queries executed in user's Log Analytics workspace
 - Secure message passing between components
+
+## Latest Features & Improvements (v0.1.4+)
+
+### New Analytics Dashboard Features
+
+#### Refresh Button Functionality
+- **Manual Refresh**: Dedicated refresh button (🔄) in analytics dashboard header
+- **Current Filter Preservation**: Refresh uses currently selected filters without resetting state
+- **Loading State Management**: Visual feedback during refresh operations
+- **Intelligent Positioning**: Located to the left of filters toggle for optimal workflow
+
+#### Backend Analytics & Management
+- **Backends Tree Explorer**: New dedicated view for Azure backend services
+- **Backend Performance Metrics**: Token usage, latency, error rates per backend
+- **Backend Filtering**: Filter analytics by specific backend services
+- **Log Analytics Integration**: Real-time backend data from Log Analytics workspace
+
+### Enhanced Authentication & Token Management
+
+#### Advanced Token Refresh System
+- **Proactive Token Refresh**: Automatic refresh 30 minutes before expiry
+- **Dual-Token Architecture**: Separate management and logs tokens for optimal security
+- **Automatic Retry Logic**: Intelligent retry on token expiry with exponential backoff
+- **Error Recovery**: Graceful degradation and re-authentication on failures
+
+#### Debug & Troubleshooting Tools
+- **Token Status Command**: `Debug: Check Token Status` for authentication troubleshooting
+- **Token Expiry Monitoring**: Real-time token status with expiry timestamps
+- **Session Management**: Improved VS Code authentication session handling
+- **Tenant-Specific Tokens**: Optimized for multi-tenant scenarios
+
+### Architecture Improvements
+
+#### Build System Enhancements
+- **Dual Webpack Configuration**: Separate builds for extension and webview components
+- **Automated Webview Compilation**: `npm run build:webview` for React component builds
+- **Source Map Support**: Enhanced debugging with complete source map coverage
+- **Asset Optimization**: Improved bundle sizes and loading performance
+
+#### Service Layer Refactoring  
+- **Consolidated Azure Service**: Single `AzureService` class for all Azure operations
+- **Enhanced Error Handling**: Comprehensive error recovery with context-aware retry logic
+- **Resource Management**: Improved cleanup and lifecycle management
+- **Query Optimization**: Better Kusto query construction with performance improvements
+
+### User Experience Enhancements
+
+#### Tree View Improvements
+- **Consistent Iconography**: Updated VS Code theme icons across all tree views
+- **Better Context Menus**: Streamlined actions with appropriate icon placement
+- **Performance Optimization**: Faster loading with intelligent caching
+- **Error State Handling**: Graceful fallbacks when services are unavailable
+
+#### Developer Experience
+- **Comprehensive Documentation**: Updated technical docs with latest architecture
+- **Enhanced Debugging**: Better logging and error reporting throughout the codebase
+- **Type Safety**: Improved TypeScript interfaces and error handling
+- **Code Organization**: Better separation of concerns and modularity
 
 ## Future Enhancements
 

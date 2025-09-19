@@ -2,12 +2,13 @@ import * as vscode from 'vscode';
 import { ApiManagementClient } from '@azure/arm-apimanagement';
 import { SubscriptionClient } from '@azure/arm-subscriptions';
 import { LogsQueryClient } from '@azure/monitor-query-logs';
-import { TokenCredential } from '@azure/core-auth';
+import { TokenCredential, AccessToken } from '@azure/core-auth';
 import { 
     AzureConnection, 
     ApiManagementApi, 
     ApiManagementSubscription, 
     ModelUsage, 
+    BackendUsage,
     LogAnalyticsResult,
     AnalyticsFilters,
     AnalyticsSummary
@@ -21,13 +22,21 @@ export class AzureService {
     private credential: TokenCredential | null = null;
     private logsCredential: TokenCredential | null = null;
 
+    // Token management
+    private managementToken: AccessToken | null = null;
+    private logsToken: AccessToken | null = null;
+    private currentTenantId: string | null = null;
+    private isRefreshing = false;
+    private managementSession: vscode.AuthenticationSession | null = null;
+    private logsSession: vscode.AuthenticationSession | null = null;
+
     private readonly requiredScopes = [
         'https://management.azure.com/.default'
     ];
 
     async authenticate(): Promise<boolean> {
         try {
-            // Get authentication session using VS Code's built-in Microsoft authentication
+            // Get initial authentication session
             const session = await vscode.authentication.getSession('microsoft', this.requiredScopes, {
                 createIfNone: true
             });
@@ -36,18 +45,222 @@ export class AzureService {
                 return false;
             }
 
-            // Create a custom credential that uses the VS Code session
+            // Store initial session
+            this.managementSession = session;
+            this.managementToken = this.createTokenFromSession(session);
+
+            // Create credential with automatic refresh
             this.credential = {
-                getToken: async () => ({
-                    token: session.accessToken,
-                    expiresOnTimestamp: Date.now() + (60 * 60 * 1000) // 1 hour
-                })
+                getToken: async (scopes?: string | string[]) => {
+                    return await this.getManagementToken();
+                }
             };
 
             return true;
         } catch (error) {
             vscode.window.showErrorMessage(`Authentication failed: ${error}`);
             return false;
+        }
+    }
+
+    private async refreshManagementToken(): Promise<void> {
+        if (this.isRefreshing) {
+            // Wait for ongoing refresh to complete
+            while (this.isRefreshing) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            return;
+        }
+
+        this.isRefreshing = true;
+        try {
+            console.log('[AzureService] Refreshing management token...');
+            
+            const scopes = [...this.requiredScopes];
+            if (this.currentTenantId) {
+                scopes.push(`VSCODE_TENANT:${this.currentTenantId}`);
+            }
+
+            // First try to get session silently (this may return a refreshed token)
+            let session = await vscode.authentication.getSession('microsoft', scopes, {
+                createIfNone: false,
+                silent: true
+            });
+
+            // If no session or we detect the session is the same as our cached one,
+            // request a fresh session (VS Code handles refresh internally)
+            if (!session || (this.managementSession && session.accessToken === this.managementSession.accessToken)) {
+                console.log('[AzureService] Requesting fresh session...');
+                session = await vscode.authentication.getSession('microsoft', scopes, {
+                    createIfNone: true,
+                    clearSessionPreference: true // This clears VS Code's cached preference and may trigger refresh
+                });
+            }
+
+            if (!session) {
+                throw new Error('Failed to get authentication session');
+            }
+
+            this.managementSession = session;
+            this.managementToken = this.createTokenFromSession(session);
+            
+            // Update the credential with the new token
+            this.credential = {
+                getToken: async (scopes?: string | string[]) => {
+                    return await this.getManagementToken();
+                }
+            };
+
+            // Recreate Azure SDK clients to use the refreshed credential
+            await this.recreateAzureClients();
+            
+            console.log('[AzureService] Management token refreshed successfully');
+        } catch (error) {
+            console.error('[AzureService] Failed to refresh management token:', error);
+            this.managementToken = null;
+            this.managementSession = null;
+            throw error;
+        } finally {
+            this.isRefreshing = false;
+        }
+    }
+
+    private async recreateAzureClients(): Promise<void> {
+        if (this.connection && this.credential) {
+            console.log('[AzureService] Recreating Azure SDK clients with fresh credentials...');
+            
+            // Recreate API Management client
+            this.apiManagementClient = new ApiManagementClient(this.credential, this.connection.subscriptionId);
+            
+            // Recreate Subscription client
+            this.subscriptionClient = new SubscriptionClient(this.credential);
+            
+            console.log('[AzureService] Azure SDK clients recreated');
+        }
+    }
+
+    private async getManagementToken(): Promise<AccessToken> {
+        const now = Date.now();
+
+        // Check if token needs refresh - be more aggressive about refreshing
+        const needsRefresh = !this.managementToken || 
+                           (this.managementToken.refreshAfterTimestamp && now >= this.managementToken.refreshAfterTimestamp);
+        
+        if (needsRefresh) {
+            try {
+                await this.refreshManagementToken();
+            } catch (error) {
+                console.error('[AzureService] Token refresh failed, trying to get fresh session:', error);
+                // If refresh fails, try to get a completely fresh session
+                await this.getFreshManagementSession();
+            }
+        }
+
+        // Check if token is still valid after refresh
+        if (!this.managementToken) {
+            throw new Error('Management token is null after refresh');
+        }
+
+        if (now >= this.managementToken.expiresOnTimestamp) {
+            throw new Error('Management token expired and refresh failed. Please retry.');
+        }
+
+        return this.managementToken;
+    }
+
+    private async getFreshManagementSession(): Promise<void> {
+        console.log('[AzureService] Getting fresh management session...');
+        
+        const scopes = [...this.requiredScopes];
+        if (this.currentTenantId) {
+            scopes.push(`VSCODE_TENANT:${this.currentTenantId}`);
+        }
+
+        const session = await vscode.authentication.getSession('microsoft', scopes, {
+            createIfNone: true
+        });
+
+        if (!session) {
+            throw new Error('Failed to get fresh authentication session');
+        }
+
+        this.managementSession = session;
+        this.managementToken = this.createTokenFromSession(session);
+        
+        // Update credential and recreate clients
+        this.credential = {
+            getToken: async (scopes?: string | string[]) => {
+                return await this.getManagementToken();
+            }
+        };
+
+        await this.recreateAzureClients();
+        console.log('[AzureService] Fresh management session obtained');
+    }
+
+    private createTokenFromSession(session: vscode.AuthenticationSession): AccessToken {
+        const now = Date.now();
+        const token = {
+            token: session.accessToken,
+            expiresOnTimestamp: now + (60 * 60 * 1000), // 1 hour from now
+            refreshAfterTimestamp: now + (30 * 60 * 1000) // 30 minutes from now (refresh more aggressively)
+        };
+        
+        console.log(`[AzureService] Created token - expires in ${Math.round((token.expiresOnTimestamp - now) / 60000)} minutes, refresh in ${Math.round((token.refreshAfterTimestamp - now) / 60000)} minutes`);
+        return token;
+    }
+
+    // Debug method to check token status
+    public getTokenStatus(): { management: any, logs: any } {
+        const now = Date.now();
+        return {
+            management: this.managementToken ? {
+                hasToken: !!this.managementToken,
+                expiresIn: Math.round((this.managementToken.expiresOnTimestamp - now) / 60000),
+                refreshIn: this.managementToken.refreshAfterTimestamp ? Math.round((this.managementToken.refreshAfterTimestamp - now) / 60000) : 0,
+                needsRefresh: this.managementToken.refreshAfterTimestamp ? now >= this.managementToken.refreshAfterTimestamp : true
+            } : null,
+            logs: this.logsToken ? {
+                hasToken: !!this.logsToken,
+                expiresIn: Math.round((this.logsToken.expiresOnTimestamp - now) / 60000),
+                refreshIn: this.logsToken.refreshAfterTimestamp ? Math.round((this.logsToken.refreshAfterTimestamp - now) / 60000) : 0,
+                needsRefresh: this.logsToken.refreshAfterTimestamp ? now >= this.logsToken.refreshAfterTimestamp : true
+            } : null
+        };
+    }
+
+    // Helper method to execute operations with automatic token refresh retry
+    private async executeWithTokenRefresh<T>(
+        operation: () => Promise<T>, 
+        tokenType: 'management' | 'logs' = 'management'
+    ): Promise<T> {
+        try {
+            return await operation();
+        } catch (error: any) {
+            const errorMessage = error?.message || error?.toString() || '';
+            
+            // Check if this is a token expiry error
+            if (errorMessage.includes('EvolvedSecurityTokenService') || 
+                errorMessage.includes('access token expiry') ||
+                errorMessage.includes('401') ||
+                errorMessage.includes('403')) {
+                
+                console.log(`[AzureService] Detected token expiry error for ${tokenType} token, refreshing and retrying...`);
+                
+                // Refresh the appropriate token
+                if (tokenType === 'management') {
+                    await this.getFreshManagementSession();
+                } else if (this.currentTenantId) {
+                    await this.refreshLogsToken(this.currentTenantId);
+                }
+                
+                // Retry the operation once
+                console.log(`[AzureService] Retrying operation after token refresh...`);
+                return await operation();
+            }
+            
+            // If not a token error, re-throw
+            throw error;
         }
     }
 
@@ -87,29 +300,88 @@ export class AzureService {
         }
     }
 
-    private async getLogsSpecificToken(tenantId: string): Promise<string | null> {
+    private async refreshLogsToken(tenantId: string): Promise<void> {
+        if (this.isRefreshing) {
+            // Wait for ongoing refresh to complete
+            while (this.isRefreshing) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            return;
+        }
+
+        this.isRefreshing = true;
         try {
-            console.log(`Getting logs-specific token`);
+            console.log(`[AzureService] Refreshing logs token for tenant: ${tenantId}`);
             
-            const scopes = [
-                'https://api.loganalytics.io/.default'
-            ];
+            const scopes = ['https://api.loganalytics.io/.default'];
             scopes.push(`VSCODE_TENANT:${tenantId}`);
-            const session = await vscode.authentication.getSession('microsoft', scopes, {
-                  forceNewSession: true // VS Code API to force a new session,
+            
+            // First try to get session silently
+            let session = await vscode.authentication.getSession('microsoft', scopes, {
+                createIfNone: false,
+                silent: true
             });
 
-            if (session) {
-                console.log(`Successfully obtained new authentication session`);
-                return session.accessToken;
+            // If no session or we detect the session is the same as our cached one,
+            // request a fresh session
+            if (!session || (this.logsSession && session.accessToken === this.logsSession.accessToken)) {
+                console.log('[AzureService] Requesting fresh logs session...');
+                session = await vscode.authentication.getSession('microsoft', scopes, {
+                    createIfNone: true,
+                    clearSessionPreference: true
+                });
             }
 
-            return null;
+            if (!session) {
+                throw new Error('Failed to get logs authentication session');
+            }
 
+            this.logsSession = session;
+            this.logsToken = this.createTokenFromSession(session);
+            this.currentTenantId = tenantId;
+            console.log(`[AzureService] Logs token refreshed successfully for tenant: ${tenantId}`);
+        } catch (error) {
+            console.error(`[AzureService] Failed to refresh logs token for tenant ${tenantId}:`, error);
+            this.logsToken = null;
+            this.logsSession = null;
+            throw error;
+        } finally {
+            this.isRefreshing = false;
+        }
+    }
+
+    private async getLogsSpecificToken(tenantId: string): Promise<string | null> {
+        try {
+            const token = await this.getLogsAccessToken(tenantId);
+            return token.token;
         } catch (error) {
             console.error('Error getting logs-specific token:', error);
             return null;
         }
+    }
+
+    private async getLogsAccessToken(tenantId: string): Promise<AccessToken> {
+        const now = Date.now();
+
+        // Check if logs token needs refresh or tenant changed
+        const needsRefresh = !this.logsToken || 
+                           this.currentTenantId !== tenantId ||
+                           (this.logsToken.refreshAfterTimestamp && now >= this.logsToken.refreshAfterTimestamp);
+        
+        if (needsRefresh) {
+            await this.refreshLogsToken(tenantId);
+        }
+
+        // Check if token is still valid after refresh
+        if (!this.logsToken) {
+            throw new Error('Logs token is null after refresh');
+        }
+
+        if (now >= this.logsToken.expiresOnTimestamp) {
+            throw new Error('Logs token expired and refresh failed. Please retry.');
+        }
+
+        return this.logsToken;
     }
 
     private async getTenantSpecificToken(tenantId: string): Promise<string | null> {
@@ -222,7 +494,8 @@ export class AzureService {
             this.credential = {
                 getToken: async () => ({
                     token: tenantSpecificToken,
-                    expiresOnTimestamp: Date.now() + (60 * 60 * 1000) // 1 hour
+                    expiresOnTimestamp: Date.now() + (60 * 60 * 1000), // 1 hour
+                    refreshAfterTimestamp: Date.now() + (55 * 60 * 1000) // 55 minutes
                 })
             };
 
@@ -412,21 +685,15 @@ export class AzureService {
                 gatewayUrl: actualGatewayUrl || undefined
             };
 
-            // Initialize Log Analytics client
-            const logsSpecificToken = await this.getLogsSpecificToken(selectedSub.tenantId);
-            if (!logsSpecificToken) {
-                vscode.window.showErrorMessage('Failed to get logs-specific authentication token');
-                return false;
-            }
+            // Initialize Log Analytics client with automatic token refresh
+            await this.refreshLogsToken(selectedSub.tenantId);
 
-            // Update credential to use the logs-specific token
+            // Create credential with automatic refresh
             this.logsCredential = {
-                getToken: async () => ({
-                    token: logsSpecificToken,
-                    expiresOnTimestamp: Date.now() + (60 * 60 * 1000) // 1 hour
-                })
+                getToken: async (scopes?: string | string[]) => {
+                    return await this.getLogsAccessToken(selectedSub.tenantId);
+                }
             };
-
 
             this.logsClient = new LogsQueryClient(this.logsCredential);
 
@@ -510,16 +777,17 @@ export class AzureService {
             throw new Error('Not connected to Azure API Management');
         }
 
-        const apis: ApiManagementApi[] = [];
-        try {
-            for await (const api of this.apiManagementClient.api.listByService(
-                this.connection.resourceGroupName,
-                this.connection.serviceName
+        return await this.executeWithTokenRefresh(async () => {
+            const apis: ApiManagementApi[] = [];
+            
+            for await (const api of this.apiManagementClient!.api.listByService(
+                this.connection!.resourceGroupName,
+                this.connection!.serviceName
             )) {
                 // Only include inference APIs (you might want to filter based on naming convention or tags)
                 if (api.name && this.isInferenceApi(api)) {
                     // Get the actual gateway URL from connection or fallback to constructed URL
-                    const actualGatewayUrl = this.connection.gatewayUrl || `https://${this.connection.serviceName}.azure-api.net`;
+                    const actualGatewayUrl = this.connection!.gatewayUrl || `https://${this.connection!.serviceName}.azure-api.net`;
                     const apiPath = api.path || '';
                     const fullGatewayUrl = `${actualGatewayUrl}/${apiPath}`;
                     
@@ -539,11 +807,9 @@ export class AzureService {
                     });
                 }
             }
-        } catch (error) {
-            throw new Error(`Failed to fetch APIs: ${error}`);
-        }
-
-        return apis;
+            
+            return apis;
+        }, 'management');
     }
 
     async getSubscriptions(): Promise<ApiManagementSubscription[]> {
@@ -551,17 +817,18 @@ export class AzureService {
             throw new Error('Not connected to Azure API Management');
         }
 
-        const subscriptions: ApiManagementSubscription[] = [];
-        try {
-            for await (const sub of this.apiManagementClient.subscription.list(
-                this.connection.resourceGroupName,
-                this.connection.serviceName
+        return await this.executeWithTokenRefresh(async () => {
+            const subscriptions: ApiManagementSubscription[] = [];
+            
+            for await (const sub of this.apiManagementClient!.subscription.list(
+                this.connection!.resourceGroupName,
+                this.connection!.serviceName
             )) {
                 if (sub.name) {
                     // Get subscription keys
-                    const keys = await this.apiManagementClient.subscription.listSecrets(
-                        this.connection.resourceGroupName,
-                        this.connection.serviceName,
+                    const keys = await this.apiManagementClient!.subscription.listSecrets(
+                        this.connection!.resourceGroupName,
+                        this.connection!.serviceName,
                         sub.name
                     );
 
@@ -577,11 +844,9 @@ export class AzureService {
                     });
                 }
             }
-        } catch (error) {
-            throw new Error(`Failed to fetch subscriptions: ${error}`);
-        }
-
-        return subscriptions;
+            
+            return subscriptions;
+        }, 'management');
     }
 
     async getModelsFromLogs(filters?: AnalyticsFilters): Promise<ModelUsage[]> {
@@ -614,6 +879,41 @@ export class AzureService {
             return models;
         } catch (error) {
             console.log(`Failed to fetch models from Azure Monitor: ${error}`);
+            // Return empty array instead of throwing error
+            return [];
+        }
+    }
+
+    async getBackendsFromLogs(filters?: AnalyticsFilters): Promise<BackendUsage[]> {
+        if (!this.logsClient || !this.connection) {
+            console.log('Not connected to Azure API Management - returning empty backends');
+            return [];
+        }
+
+        try {
+            const query = this.buildBackendsQuery(filters);
+            console.log("backend query: ", query);
+            const resourceId = `/subscriptions/${this.connection.subscriptionId}/resourceGroups/${this.connection.resourceGroupName}/providers/Microsoft.ApiManagement/service/${this.connection.serviceName}`;
+            
+            const result = await this.logsClient.queryResource(
+                resourceId,
+                query,
+                { 
+                    // Use the time range from filters or default to last 30 days
+                    startTime: filters?.timeRange?.start || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                    endTime: filters?.timeRange?.end || new Date()
+                }
+            );
+            console.log("backend result: ", result);
+
+            // Parse the results and return backend usage data
+            const table = 'tables' in result ? result.tables[0] : null;
+            const backends = this.parseBackendUsageResults(table?.rows || []);
+            
+            // Return backends array (empty or populated) - let the UI handle empty state
+            return backends;
+        } catch (error) {
+            console.log(`Failed to fetch backends from Azure Monitor: ${error}`);
             // Return empty array instead of throwing error
             return [];
         }
@@ -750,6 +1050,52 @@ export class AzureService {
         return query;
     }
 
+    private buildBackendsQuery(filters?: AnalyticsFilters): string {
+        let query = `
+                let llmHeaderLogs = ApiManagementGatewayLlmLog 
+                | where DeploymentName != ''; 
+                let llmLogsWithSubscriptionId = llmHeaderLogs 
+                | join kind=leftouter ApiManagementGatewayLogs on CorrelationId 
+                | project 
+                    TimeGenerated, 
+                    SubscriptionId = ApimSubscriptionId, 
+                    DeploymentName, 
+                    PromptTokens, 
+                    CompletionTokens, 
+                    TotalTokens,
+                    ResponseCode,
+                    TotalTime,
+                    ApiId,
+                    OperationId,
+                    Region,
+                    Backend = parse_url(BackendUrl).Host,
+                    CorrelationId;
+                llmLogsWithSubscriptionId
+                | where 1 == 1
+                | summarize 
+                    TotalTokens = sum(PromptTokens + CompletionTokens),
+                    PromptTokens = sum(PromptTokens),
+                    CompletionTokens = sum(CompletionTokens),
+                    RequestCount = count(),
+                    AvgLatency = avg(TotalTime),
+                    ErrorRate = countif(ResponseCode >= 400) * 100.0 / count(),
+                    SuccessRate = countif(ResponseCode < 400) * 100.0 / count()
+                by tostring(Backend)
+                | order by TotalTokens desc 
+        `;
+
+        if (filters) {
+            const whereConditions = this.buildWhereConditions(filters);
+
+            if (whereConditions.length > 0) {
+                query = query.replace('| where 1 == 1', `| where ${whereConditions.join(' and ')}`);
+            }
+        }
+
+        return query;
+    }
+
+
     private buildSummaryQuery(filters?: AnalyticsFilters): string {
         let query = `
                 let llmHeaderLogs = ApiManagementGatewayLlmLog 
@@ -839,13 +1185,15 @@ export class AzureService {
         if (filters.apiIds && filters.apiIds.length > 0) {
             conditions.push(`ApiId in (${filters.apiIds.map(id => `"${id}"`).join(', ')})`);
         }
-        if (filters.modelNames && filters.modelNames.length > 0) {
-            conditions.push(`DeploymentName in (${filters.modelNames.map(name => `"${name}"`).join(', ')})`);
-        }
         if (filters.subscriptionNames && filters.subscriptionNames.length > 0) {
             conditions.push(`SubscriptionId in (${filters.subscriptionNames.map(name => `"${name}"`).join(', ')})`);
         }
-
+        if (filters.backends && filters.backends.length > 0) {
+            conditions.push(`Backend in (${filters.backends.map(name => `"${name}"`).join(', ')})`);
+        }
+        if (filters.modelNames && filters.modelNames.length > 0) {
+            conditions.push(`DeploymentName in (${filters.modelNames.map(name => `"${name}"`).join(', ')})`);
+        }
         
         return conditions;
     }
@@ -853,6 +1201,19 @@ export class AzureService {
     private parseModelUsageResults(rows: any[]): ModelUsage[] {
         return rows.map(row => ({
             modelName: row[0] || 'Unknown',
+            totalTokens: Number(row[1]) || 0,
+            promptTokens: Number(row[2]) || 0,
+            completionTokens: Number(row[3]) || 0,
+            requestCount: Number(row[4]) || 0,
+            averageLatency: Number(row[5]) || 0,
+            errorRate: Number(row[6]) || 0,
+            successRate: Number(row[7]) || 0
+        }));
+    }
+
+    private parseBackendUsageResults(rows: any[]): BackendUsage[] {
+        return rows.map(row => ({
+            backendName: row[0] || 'Unknown',
             totalTokens: Number(row[1]) || 0,
             promptTokens: Number(row[2]) || 0,
             completionTokens: Number(row[3]) || 0,
@@ -915,7 +1276,7 @@ export class AzureService {
                 startTime: filters?.timeRange?.start || new Date(Date.now() - 24 * 60 * 60 * 1000),
                 endTime: filters?.timeRange?.end || new Date()
             };
-            
+
             const result = await this.logsClient.queryResource(
                 resourceId,
                 query,
@@ -981,29 +1342,35 @@ export class AzureService {
             }
         }
 
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        console.log('User timezone:', userTimezone); // e.g., "America/Los_Angeles"
+
         let query = `
-            let startTime = ago(${timeRangeAgo});
-            let endTime = now();
-            let llmLogsWithSubscription = ApiManagementGatewayLlmLog 
-            | where DeploymentName != ''
-            | where TimeGenerated between (startTime .. endTime)
-            | join kind=leftouter ApiManagementGatewayLogs on CorrelationId
-            | project TimeGenerated, PromptTokens, CompletionTokens, SubscriptionId = ApimSubscriptionId, DeploymentName, ApiId
-            | where 1 == 1;
-            llmLogsWithSubscription
-            | make-series 
-                Prompts = sum(PromptTokens),
-                Completions = sum(CompletionTokens),
-                TotalTokens = sum(PromptTokens + CompletionTokens)
-                on TimeGenerated from startTime to endTime step ${binSize}
-            | mv-expand TimeGenerated, Prompts, Completions, TotalTokens
-            | project 
-                TimeGenerated,
-                TimeLabel = format_datetime(todatetime(TimeGenerated), '${timeLabelFormat}'),
-                Prompts = toint(Prompts),
-                Completions = toint(Completions), 
-                TotalTokens = toint(TotalTokens)
-            | order by todatetime(TimeGenerated) asc
+                let startTime = ago(${timeRangeAgo});
+                let endTime = now();
+                let dateRange = range TimeGenerated from bin(startTime, ${binSize}) to bin(endTime, ${binSize}) step ${binSize};
+                let llmLogsWithSubscription = ApiManagementGatewayLlmLog 
+                | where DeploymentName != ''
+                | where TimeGenerated between (startTime .. endTime)
+                | join kind=leftouter ApiManagementGatewayLogs on CorrelationId
+                | project TimeGenerated, PromptTokens, CompletionTokens, SubscriptionId = ApimSubscriptionId, DeploymentName, ApiId, Backend = parse_url(BackendUrl).Host
+                | where 1 == 1;
+                let aggregatedData = llmLogsWithSubscription
+                | extend DayBin = bin(TimeGenerated, ${binSize})
+                | summarize 
+                    Prompts = sum(PromptTokens),
+                    Completions = sum(CompletionTokens),
+                    TotalTokens = sum(PromptTokens + CompletionTokens)
+                    by DayBin;
+                dateRange
+                | join kind=leftouter aggregatedData on $left.TimeGenerated == $right.DayBin
+                | project 
+                    TimeGenerated,
+                    TimeLabel = format_datetime(TimeGenerated, '${timeLabelFormat}'),
+                    Prompts = toint(coalesce(Prompts, 0)),
+                    Completions = toint(coalesce(Completions, 0)), 
+                    TotalTokens = toint(coalesce(TotalTokens, 0))
+                | order by TimeGenerated asc
         `;
 
         if (filters) {

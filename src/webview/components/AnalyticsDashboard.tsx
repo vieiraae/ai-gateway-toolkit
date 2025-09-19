@@ -62,6 +62,7 @@ interface AnalyticsData {
 interface Filters {
     apiIds?: string[];
     subscriptionNames?: string[];
+    backends?: string[];
     modelNames?: string[];
     timeRange: {
         start: Date;
@@ -95,6 +96,7 @@ const AnalyticsDashboard: React.FC = () => {
     const [filterOptions, setFilterOptions] = useState({
         apiIds: [] as string[],
         subscriptionNames: [] as string[],
+        backends: [] as string[],
         modelNames: [] as string[]
     });
 
@@ -168,6 +170,21 @@ const AnalyticsDashboard: React.FC = () => {
         });
     };
 
+    const handleRefresh = () => {
+        setLoading(true);
+        
+        // Refresh analytics data with current filters
+        vscode.postMessage({
+            type: 'getAnalyticsData',
+            data: filters
+        });
+        
+        // Refresh filter options as well
+        vscode.postMessage({
+            type: 'getFilterOptions'
+        });
+    };
+
     const handleLogExpand = (index: number) => {
         setExpandedLog(expandedLog === index ? null : index);
     };
@@ -210,6 +227,8 @@ const AnalyticsDashboard: React.FC = () => {
         logs: []
     };
 
+    console.log('Rendering AnalyticsDashboard, loading:', loading);
+    
     return (
         <div className="analytics-dashboard">
             <header className="dashboard-header">
@@ -236,13 +255,27 @@ const AnalyticsDashboard: React.FC = () => {
                             <option value="30d">Last 30 days</option>
                         </select>
                     </div>
-                    <button 
-                        className="filters-toggle-btn"
-                        onClick={() => setFiltersCollapsed(!filtersCollapsed)}
-                        title={filtersCollapsed ? 'Show Filters' : 'Hide Filters'}
-                    >
-                        {filtersCollapsed ? '◀ Filters' : 'Filters ▶'}
-                    </button>
+                    <div className="header-buttons">
+                        <button 
+                            className="refresh-btn"
+                            onClick={() => {
+                                console.log('Refresh button clicked');
+                                handleRefresh();
+                            }}
+                            title="Refresh Dashboard"
+                            disabled={loading}
+                            style={{ backgroundColor: '#007acc', color: 'white' }}
+                        >
+                            {loading ? '⟳' : '🔄'} Refresh
+                        </button>
+                        <button 
+                            className="filters-toggle-btn"
+                            onClick={() => setFiltersCollapsed(!filtersCollapsed)}
+                            title={filtersCollapsed ? 'Show Filters' : 'Hide Filters'}
+                        >
+                            {filtersCollapsed ? '◀ Filters' : 'Filters ▶'}
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -462,6 +495,24 @@ const AnalyticsDashboard: React.FC = () => {
                             </div>
 
                             <div className="filter-group">
+                                <label htmlFor="backends">Backends</label>
+                                <select 
+                                    id="backends"
+                                    multiple
+                                    title="Backend Names"
+                                    value={filters.backends || []}
+                                    onChange={(e) => {
+                                        const selected = Array.from(e.target.selectedOptions, option => option.value);
+                                        handleFiltersChange({ backends: selected.length > 0 ? selected : undefined });
+                                    }}
+                                >
+                                    {filterOptions.backends.map(backend => (
+                                        <option key={backend} value={backend}>{backend}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="filter-group">
                                 <label htmlFor="models">Models</label>
                                 <select 
                                     id="models"
@@ -494,6 +545,7 @@ const AnalyticsDashboard: React.FC = () => {
                                             timeRange: getTimeRange('24h'),
                                             apiIds: undefined,
                                             subscriptionNames: undefined,
+                                            backends: undefined,
                                             modelNames: undefined
                                         });
                                     }}

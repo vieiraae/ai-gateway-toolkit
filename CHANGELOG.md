@@ -4,6 +4,63 @@ All notable changes to the "ai-gateway-toolkit" extension will be documented in 
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.2.0] - 2025-09-19
+
+### New Features
+
+- **Playground Model Auto-Selection**: Enhanced playground experience with automatic model selection
+  - **First Model Auto-Selection**: Automatically selects the first available model when playground opens
+  - **Improved Model Selection UI**: Replaced text input with dropdown select for better discoverability
+  - **Token Usage Display**: Shows model usage statistics in dropdown (e.g., "gpt-4 (1,234,567 tokens)")
+  - **Consistent User Experience**: Aligns with existing auto-selection behavior for APIs and subscriptions
+
+### User Experience Improvements
+
+- **Reduced Manual Configuration**: Users can start testing immediately without manual model entry
+- **Better Model Discoverability**: Dropdown interface shows all available models from Log Analytics
+- **Enhanced Playground Workflow**: Streamlined model selection reduces friction in API testing
+- **Fallback Behavior**: Graceful handling when models are not yet loaded or unavailable
+
+### Technical Enhancements
+
+- **Improved State Management**: Enhanced playground component state handling for model selection
+- **Better Data Flow**: Optimized model data processing and automatic selection logic
+- **UI Consistency**: Model selector now matches the design patterns of API and subscription selectors
+- **Type Safety**: Enhanced TypeScript interfaces for model selection components
+
+- **Analytics Dashboard Refresh Button**: Added dedicated refresh button (🔄) in analytics dashboard header
+  - Manual refresh capability with current filter preservation
+  - Loading state management with visual feedback
+  - Optimal positioning to the left of filters toggle
+- **Backend Management & Analytics**: New comprehensive backend management system
+  - **Backends Tree Explorer**: Dedicated view for Azure backend services
+  - **Backend Performance Metrics**: Token usage, latency, error rates per backend
+  - **Backend Filtering**: Filter analytics by specific backend services
+  - **Log Analytics Integration**: Real-time backend data from Log Analytics workspace
+
+### Enhanced Authentication & Token Management
+
+- **Advanced Token Refresh System**: Proactive token refresh 30 minutes before expiry
+- **Dual-Token Architecture**: Separate management and logs tokens for optimal security
+- **Automatic Retry Logic**: Intelligent retry on token expiry with exponential backoff
+- **Error Recovery**: Graceful degradation and re-authentication on failures
+- **Debug Tools**: New `Debug: Check Token Status` command for authentication troubleshooting
+
+### Technical Improvements
+
+- **Consolidated Azure Service**: Single `AzureService` class for all Azure operations
+- **Enhanced Error Handling**: Comprehensive error recovery with context-aware retry logic
+- **Build System Enhancements**: Dual webpack configuration for extension and webview components
+- **Service Layer Refactoring**: Better separation of concerns and modularity
+- **Performance Optimization**: Improved query construction and caching mechanisms
+
+### User Experience Enhancements
+
+- **Consistent Iconography**: Updated VS Code theme icons across all tree views
+- **Better Context Menus**: Streamlined actions with appropriate icon placement
+- **Enhanced Documentation**: Updated technical documentation with latest architecture
+- **Improved Type Safety**: Better TypeScript interfaces and error handling
+
 ## [0.1.4] - 2025-09-17
 
 ### New Documentation

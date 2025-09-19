@@ -42,6 +42,17 @@ export interface ModelUsage {
     successRate: number;
 }
 
+export interface BackendUsage {
+    backendName: string;
+    totalTokens: number;
+    promptTokens: number;
+    completionTokens: number;
+    requestCount: number;
+    averageLatency: number;
+    errorRate: number;
+    successRate: number;
+}
+
 export interface LogAnalyticsResult {
     timestamp: Date;
     correlationId: string;
@@ -62,6 +73,7 @@ export interface AnalyticsFilters {
     apiIds?: string[];
     subscriptionNames?: string[];
     modelNames?: string[];
+    backends?: string[];
     timeRange: {
         start: Date;
         end: Date;

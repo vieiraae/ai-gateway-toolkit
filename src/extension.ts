@@ -3,6 +3,7 @@ import { AzureService } from './services/azureService';
 import { WebviewService } from './services/webviewService';
 import { ApiTreeProvider } from './providers/apiTreeProvider';
 import { SubscriptionTreeProvider } from './providers/subscriptionTreeProvider';
+import { BackendTreeProvider } from './providers/backendTreeProvider';
 import { ModelTreeProvider } from './providers/modelTreeProvider';
 import { ConnectionTreeProvider } from './providers/connectionTreeProvider';
 import { HelpTreeProvider } from './providers/helpTreeProvider';
@@ -17,6 +18,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initialize tree providers
     const apiTreeProvider = new ApiTreeProvider(azureService);
     const subscriptionTreeProvider = new SubscriptionTreeProvider(azureService);
+    const backendTreeProvider = new BackendTreeProvider(azureService);
     const modelTreeProvider = new ModelTreeProvider(azureService);
     const connectionTreeProvider = new ConnectionTreeProvider(azureService);
     const helpTreeProvider = new HelpTreeProvider();
@@ -36,6 +38,13 @@ export async function activate(context: vscode.ExtensionContext) {
         });
     });
 
+    backendTreeProvider.onDidChangeTreeData(() => {
+        webviewService.sendMessageToPanel('analytics', {
+            type: 'dataChanged',
+            data: { source: 'backends' }
+        });
+    });
+
     modelTreeProvider.onDidChangeTreeData(() => {
         webviewService.sendMessageToPanel('analytics', {
             type: 'dataChanged',
@@ -51,6 +60,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const subscriptionTreeView = vscode.window.createTreeView('aiGatewayToolkit.subscriptionsExplorer', {
         treeDataProvider: subscriptionTreeProvider,
+        showCollapseAll: true
+    });
+
+    const backendTreeView = vscode.window.createTreeView('aiGatewayToolkit.backendsExplorer', {
+        treeDataProvider: backendTreeProvider,
         showCollapseAll: true
     });
 
@@ -88,6 +102,17 @@ export async function activate(context: vscode.ExtensionContext) {
                 openPlaygroundWithSelection({
                     subscriptionId: selectedItem.subscription.id,
                     subscriptionName: selectedItem.subscription.name
+                });
+            }
+        }
+    });
+
+    backendTreeView.onDidChangeSelection(e => {
+        if (e.selection.length > 0) {
+            const selectedItem = e.selection[0];
+            if (selectedItem.backend) {
+                openPlaygroundWithSelection({
+                    backend: selectedItem.backend.backendName
                 });
             }
         }
@@ -168,6 +193,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 // Refresh all tree views
                 apiTreeProvider.refresh();
                 subscriptionTreeProvider.refresh();
+                backendTreeProvider.refresh();
                 modelTreeProvider.refresh();
                 connectionTreeProvider.refresh();
                 
@@ -191,6 +217,7 @@ export async function activate(context: vscode.ExtensionContext) {
         // Refresh all tree views
         apiTreeProvider.refresh();
         subscriptionTreeProvider.refresh();
+        backendTreeProvider.refresh();
         modelTreeProvider.refresh();
         connectionTreeProvider.refresh();
         
@@ -215,11 +242,12 @@ export async function activate(context: vscode.ExtensionContext) {
         }
         panel.reveal();
 
-        // If called with a specific item (API, subscription, or model), filter by it
+        // If called with a specific item (API, subscription, backend, or model), filter by it
         if (item) {
             console.log('Opening analytics with item:', item);
             const filters = item.api ? { apiIds: [item.api.id] } : 
                           item.subscription ? { subscriptionNames: [item.subscription.name] } :
+                          item.backend ? { backends: [item.backend.backendName] } :
                           item.model ? { modelNames: [item.model.modelName] } : {};
             
             console.log('Sending filters to analytics:', filters);
@@ -279,6 +307,15 @@ export async function activate(context: vscode.ExtensionContext) {
         webviewService.sendMessageToPanel('analytics', {
             type: 'dataChanged',
             data: { source: 'models' }
+        });
+    });
+
+    const refreshBackendsCommand = vscode.commands.registerCommand('aiGatewayToolkit.refreshBackends', () => {
+        backendTreeProvider.refresh();
+        // Notify analytics dashboard to refresh
+        webviewService.sendMessageToPanel('analytics', {
+            type: 'dataChanged',
+            data: { source: 'backends' }
         });
     });
 
@@ -347,35 +384,33 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    const openApiDocumentationCommand = vscode.commands.registerCommand('aiGatewayToolkit.openApiDocumentation', () => {
-        vscode.env.openExternal(vscode.Uri.parse('https://docs.microsoft.com/en-us/azure/api-management/'));
-    });
-
     const openUrlCommand = vscode.commands.registerCommand('aiGatewayToolkit.openUrl', (url: string) => {
-        if (url) {
-            vscode.env.openExternal(vscode.Uri.parse(url));
-        }
+        vscode.env.openExternal(vscode.Uri.parse(url));
     });
 
-    // Add all commands to subscriptions
+    // Debug command to check token status
+    const debugTokenStatusCommand = vscode.commands.registerCommand('aiGatewayToolkit.debugTokenStatus', () => {
+        const status = azureService.getTokenStatus();
+        const message = `Token Status:\nManagement: ${status.management ? `expires in ${status.management.expiresIn}min, refresh in ${status.management.refreshIn}min, needs refresh: ${status.management.needsRefresh}` : 'null'}\nLogs: ${status.logs ? `expires in ${status.logs.expiresIn}min, refresh in ${status.logs.refreshIn}min, needs refresh: ${status.logs.needsRefresh}` : 'null'}`;
+        console.log('[AI Gateway Toolkit]', message);
+        vscode.window.showInformationMessage(message);
+    });
+
+    // Register all commands
     context.subscriptions.push(
-        apiTreeView,
-        subscriptionTreeView,
-        modelTreeView,
-        connectionTreeView,
-        helpTreeView,
         connectCommand,
         disconnectCommand,
         openAnalyticsCommand,
         openPlaygroundCommand,
         refreshApisCommand,
         refreshSubscriptionsCommand,
+        refreshBackendsCommand,
         refreshModelsCommand,
         copySubscriptionKeyCommand,
         copySecondaryKeyCommand,
         createSubscriptionCommand,
-        openApiDocumentationCommand,
-        openUrlCommand
+        openUrlCommand,
+        debugTokenStatusCommand
     );
 
     // Handle authentication session changes

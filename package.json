@@ -2,7 +2,7 @@
   "name": "ai-gateway-toolkit",
   "displayName": "AI Gateway Toolkit",
   "description": "Connects to Azure API Management and manage AI inference APIs with a playground and analytics features",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "publisher": "AlexVieira",
   "engines": {
     "vscode": "^1.104.0"
@@ -77,6 +77,12 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "aiGatewayToolkit.refreshBackends",
+        "title": "Refresh Backends",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "aiGatewayToolkit.copySubscriptionKey",
         "title": "Copy Primary Key",
         "category": "AI Gateway Toolkit",
@@ -95,23 +101,23 @@
         "icon": "$(add)"
       },
       {
-        "command": "aiGatewayToolkit.openApiDocumentation",
-        "title": "Open API Documentation",
-        "category": "AI Gateway Toolkit",
-        "icon": "$(book)"
-      },
-      {
         "command": "aiGatewayToolkit.openUrl",
         "title": "Open URL",
         "category": "AI Gateway Toolkit",
         "icon": "$(link-external)"
+      },
+      {
+        "command": "aiGatewayToolkit.debugTokenStatus",
+        "title": "Debug: Check Token Status",
+        "category": "AI Gateway Toolkit",
+        "icon": "$(debug)"
       }
     ],
     "views": {
       "aiGatewayToolkit": [
         {
           "id": "aiGatewayToolkit.apiExplorer",
-          "name": "APIs",
+          "name": "API's",
           "when": "aiGatewayToolkit.connected",
           "icon": "$(symbol-interface)"
         },
@@ -122,10 +128,16 @@
           "icon": "$(key)"
         },
         {
+          "id": "aiGatewayToolkit.backendsExplorer",
+          "name": "Backends",
+          "when": "aiGatewayToolkit.connected",
+          "icon": "$(server)"
+        },
+        {
           "id": "aiGatewayToolkit.modelsExplorer",
           "name": "Models",
           "when": "aiGatewayToolkit.connected",
-          "icon": "$(globe)"
+          "icon": "$(package)"
         },
         {
           "id": "aiGatewayToolkit.connectionView",
@@ -158,12 +170,12 @@
         },
         {
           "command": "aiGatewayToolkit.disconnect",
-          "when": "view == aiGatewayToolkit.apiExplorer || view == aiGatewayToolkit.subscriptionsExplorer || view == aiGatewayToolkit.modelsExplorer",
+          "when": "view == aiGatewayToolkit.apiExplorer || view == aiGatewayToolkit.subscriptionsExplorer || view == aiGatewayToolkit.backendsExplorer || view == aiGatewayToolkit.modelsExplorer",
           "group": "navigation@0"
         },
         {
           "command": "aiGatewayToolkit.openAnalytics",
-          "when": "view == aiGatewayToolkit.apiExplorer || view == aiGatewayToolkit.subscriptionsExplorer || view == aiGatewayToolkit.modelsExplorer",
+          "when": "view == aiGatewayToolkit.apiExplorer || view == aiGatewayToolkit.subscriptionsExplorer || view == aiGatewayToolkit.backendsExplorer || view == aiGatewayToolkit.modelsExplorer",
           "group": "navigation@1"
         },
         {
@@ -174,6 +186,11 @@
         {
           "command": "aiGatewayToolkit.refreshSubscriptions",
           "when": "view == aiGatewayToolkit.subscriptionsExplorer",
+          "group": "navigation@2"
+        },
+        {
+          "command": "aiGatewayToolkit.refreshBackends",
+          "when": "view == aiGatewayToolkit.backendsExplorer",
           "group": "navigation@2"
         },
         {
@@ -199,11 +216,6 @@
           "group": "inline@2"
         },
         {
-          "command": "aiGatewayToolkit.openApiDocumentation",
-          "when": "view == aiGatewayToolkit.apiExplorer && viewItem == api",
-          "group": "context@1"
-        },
-        {
           "command": "aiGatewayToolkit.openAnalytics",
           "when": "view == aiGatewayToolkit.subscriptionsExplorer && viewItem == subscription",
           "group": "inline@1"
@@ -226,6 +238,11 @@
         {
           "command": "aiGatewayToolkit.connect",
           "when": "view == aiGatewayToolkit.connectionView && viewItem == connect-button",
+          "group": "inline@1"
+        },
+        {
+          "command": "aiGatewayToolkit.openAnalytics",
+          "when": "view == aiGatewayToolkit.backendsExplorer && viewItem == backend",
           "group": "inline@1"
         },
         {

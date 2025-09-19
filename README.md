@@ -15,12 +15,13 @@ Connect to Azure API Management to test and monitor AI Gateway deployments.
 - Connect to Azure API Management instances across tenants and subscriptions
 - Automatic discovery of inference APIs
 
-### 📊 Analytics Dashboard
-- Real-time AI usage metrics and monitoring
+### 📊 Analytics Dashboard - you need to configure your inference APIs with [LLM Logging](https://learn.microsoft.com/azure/api-management/api-management-howto-llm-logs) 
+- Real-time AI usage metrics and monitoring with manual refresh capability
 - Interactive charts showing usage trends, token consumption, and latency
 - Model performance analysis with success rates and error tracking
 - Detailed request logs with drill-down capabilities
-- Comprehensive filtering by API, subscription, model, region, and time range
+- Comprehensive filtering by API, subscription, model, backend, region, and time range
+- One-click refresh button to update data with current filter settings
 
 ### 🎮 Playground
 - Interactive testing environment for inference APIs
@@ -31,7 +32,6 @@ Connect to Azure API Management to test and monitor AI Gateway deployments.
 
 ### 🔧 API Management
 - View and manage inference APIs
-- Quick access to API documentation
 - Context-aware analytics filtering
 
 ### 🔑 Subscription Management
@@ -43,6 +43,12 @@ Connect to Azure API Management to test and monitor AI Gateway deployments.
 - Track model usage from Log Analytics
 - Performance metrics and token consumption analysis
 - Model comparison and optimization insights
+
+### 🔧 Backend Management
+- View and analyze Azure backend services from Log Analytics
+- Backend performance metrics including latency and error rates
+- Token usage tracking per backend service
+- Direct access to backend-specific analytics
 
 ## Getting Started
 
@@ -68,7 +74,7 @@ The extension uses VS Code's built-in Microsoft authentication provider and requ
 
 ## Usage
 
-### Analytics Dashboard
+### Analytics Dashboard - you need to configure your inference APIs with [LLM Logging](https://learn.microsoft.com/azure/api-management/api-management-howto-llm-logs) 
 - Access real-time metrics and usage trends
 - Filter data by time range, API, subscription, model, or region
 - Drill down into specific requests and responses
